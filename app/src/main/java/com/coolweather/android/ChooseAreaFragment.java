@@ -12,18 +12,17 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.coolweather.android.R;
 import com.coolweather.android.db.City;
 import com.coolweather.android.db.County;
 import com.coolweather.android.db.Province;
 import com.coolweather.android.util.HttpUtil;
 import com.coolweather.android.util.Utility;
 
-
-import org.jetbrains.annotations.NotNull;
 import org.litepal.crud.DataSupport;
 
 import java.io.IOException;
@@ -64,21 +63,22 @@ public class ChooseAreaFragment extends Fragment {
     private int currentLevel;
     @Nullable
     @Override
-    public View onCreateView(@Nullable LayoutInflater inflater,@Nullable ViewGroup container,@Nullable Bundle savedInstanceState){
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.choose_area, container, false);
         titleText = view.findViewById(R.id.title_text);
         backButton = view.findViewById(R.id.back_button);
-        listView = view.findViewById(R.id.list_view); //获取控件的实例
-        adapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_list_item_1, dataList); //初始化 ArrayAdapter
+        listView = view.findViewById(R.id.list_view);   //获取控件的实例
+        adapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_list_item_1, dataList);  //初始化 ArrayAdapter
         listView.setAdapter(adapter);
         return view;
     }
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
+        // 设置 ListView 和 Button 的点击事件
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
-            public void onItemClick(AdapterView parent, View view, int position, long id) {
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 if (currentLevel == LEVEL_PROVINCE) {
                     selectedProvince = provinceList.get(position);
                     queryCities();
@@ -98,17 +98,16 @@ public class ChooseAreaFragment extends Fragment {
                 }
             }
         });
-        queryProvinces();
+        queryProvinces();   // 加载省级数据
     }
     /**
      * 查询全国所有的省，优先从数据库中查，如果没有查询到再到服务器上查
      */
-
     private void queryProvinces() {
-        titleText.setText("中国"); // 设置头布局标题
-        backButton.setVisibility(View.GONE); // 隐藏返回按钮
+        titleText.setText("中国");    // 设置头布局标题
+        backButton.setVisibility(View.GONE);    // 隐藏返回按钮
         provinceList = DataSupport.findAll(Province.class); // 调用 LitePal 查询接口来从数据库中读取省级数据
-        if (provinceList.size() > 0) { // 读到了则显示到界面上
+        if (provinceList.size() > 0) {  // 读到了则显示到界面上
             dataList.clear();
             for (Province province : provinceList) {
                 dataList.add(province.getProvinceName());
@@ -116,9 +115,9 @@ public class ChooseAreaFragment extends Fragment {
             adapter.notifyDataSetChanged();
             listView.setSelection(0);
             currentLevel = LEVEL_PROVINCE;
-        } else { // 没有读到则从服务器上获取
-            String address = "http://guolin.tech/api/china"; // 请求地址
-            queryFromServer(address, "province"); // 后面会定义此方法
+        } else {    // 没有读到则从服务器上获取
+            String address = "http://guolin.tech/api/china";    // 请求地址
+            queryFromServer(address, "province");   // 后面会定义此方法
         }
     }
     /**
@@ -149,7 +148,7 @@ public class ChooseAreaFragment extends Fragment {
     private void queryCounties() {
         titleText.setText(selectedCity.getCityName());
         backButton.setVisibility(View.VISIBLE);
-        countyList = DataSupport.where("cityid=?", String.valueOf(selectedCity.getId()))
+        countyList = DataSupport.where("cityId=?", String.valueOf(selectedCity.getId()))
                 .find(County.class);
         if (countyList.size() > 0) {
             dataList.clear();
@@ -171,20 +170,20 @@ public class ChooseAreaFragment extends Fragment {
      */
     private void queryFromServer(String address, final String type) {
         showProgressDialog();
-        HttpUtil.sendOkHttpRequest(address, new Callback() {
+        HttpUtil.sendOkHttpRequest(address, new Callback() {    // 向服务器发送请求
             @Override
-            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+            public void onFailure(Call call, IOException e) {   //处理加载失败的情况
                 getActivity().runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         closeProgressDialog();
-                        Toast.makeText(getContext(),"加载失败",Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), "加载失败", Toast.LENGTH_SHORT).show();
                     }
                 });
             }
-
             @Override
-            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+            public void onResponse(Call call, Response response) throws IOException {
+                // 接收响应的数据并做对应处理
                 String responseText = response.body().string();
                 boolean result = false;
                 if ("province".equals(type)) {
@@ -195,12 +194,12 @@ public class ChooseAreaFragment extends Fragment {
                     result = Utility.handleCountyResponse(responseText, selectedCity.getId());
                 }
                 if (result) {
-                    getActivity().runOnUiThread(new Runnable() { // 从子线程切换到主线程
+                    getActivity().runOnUiThread(new Runnable() {    // 从子线程切换到主线程
                         @Override
                         public void run() {
                             closeProgressDialog();
                             if ("province".equals(type)) {
-                                queryProvinces(); // 重新加载数据
+                                queryProvinces();   // 重新加载数据
                             } else if ("city".equals(type)) {
                                 queryCities();
                             } else if ("county".equals(type)) {
